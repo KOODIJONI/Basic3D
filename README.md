@@ -11,6 +11,7 @@ Aloitin projektin luomien ohjelmoimalla openGL kontekstin ja ikkunan main.c tied
 ## Osa 2: Matriisi operaatiot 
 
 Loin matrix_utils.c tiedoston, jonne aloin luomaan matriisi operaatioita. Matriisien ja vectoreiden käsittelyyn. Loin perus kertolasku ja ristitulo funktiot seka funktiot jotka luo identiteettimatriisin, skaalausmatriisin, rotaatio matriisin ja scaalaus matriisit joita voi kertoa keskenään tehdäkseen eri operaatioita.
+
 Saatat miettiä, miten näitä matriiseja käytetään. Ajatellaan, vaikka että meillä on neliö joka koostuu kahdeksasta pisteestä. Näillä kaikilla pisteillä on kolme float arvoa, jotka kuvaavat niiden paikkaa kolmeulotteisessa ympäristössä. Kun kerromme niitä lukuja näillä matriiseilla, voimme liikuttaa, scaalata ja kääntää näitä obejekteja näillä matriisi operaatioilla.
 
 
