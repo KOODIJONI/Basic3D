@@ -46,6 +46,7 @@ float lightColor[3] = {0.0f, 1.01f, 1.0f};
 static ObjectVector objects; 
 
 void Renderer_Init(void) {
+
     CameraControl_Init();
 
     // if (!LoadOBJ("assets/largeTerrain.obj", &terrainMesh)) {
@@ -78,8 +79,12 @@ void Renderer_Init(void) {
     }
 
     uniformProjectionLoc = ShaderManager_GetUniformLocation(shaderProgram, "uProjection");
-    uniformViewLoc = ShaderManager_GetUniformLocation(shaderProgram, "uView");
-    uniformModelLoc = ShaderManager_GetUniformLocation(shaderProgram, "uModel");
+    uniformViewLoc       = ShaderManager_GetUniformLocation(shaderProgram, "uView");
+    uniformModelLoc      = ShaderManager_GetUniformLocation(shaderProgram, "uModel");
+
+    GLint uTextureLoc = glGetUniformLocation(shaderProgram, "uTexture");
+
+
 
     float fovY = 45.0f * (3.1415926f / 180.0f); 
     float aspect = 800.0f / 600.0f;
@@ -88,12 +93,24 @@ void Renderer_Init(void) {
     CreatePerspectiveProjection(fovY, aspect, nearr, farr, projectionMatrix);
 }
 
-void DrawObject(GLuint vao, int vertexCount, float* modelMatrix) {
+void DrawObject(GLuint vao, int vertexCount, float* modelMatrix, GLuint textureID) {
     glBindVertexArray(vao);
+
+    // Upload the model matrix
     if (uniformModelLoc != -1) {
         glUniformMatrix4fv(uniformModelLoc, 1, GL_FALSE, modelMatrix);
     }
-    glDrawArrays(GL_TRIANGLES, 0, vertexCount / 8);
+
+    // Bind the texture
+    if (textureID != 0) {
+       glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+    }
+
+    glDrawArrays(GL_TRIANGLES, 0, vertexCount); // Or glDrawElements if using EBO
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindVertexArray(0);
 }
 
 // --- [ draw ] ---
@@ -119,7 +136,7 @@ void Renderer_Draw(float deltaTime) {
     // Draw all objects in the vector
     for (int i = 0; i < objects.size; i++) {
         RenderableObject* obj = &objects.data[i];
-        DrawObject(obj->vao, obj->vertexCount, obj->modelMatrix);
+        DrawObject(obj->vao, obj->vertexCount, obj->modelMatrix,obj->textureID);
     }
 }
 

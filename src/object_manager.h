@@ -6,6 +6,7 @@ typedef struct {
     GLuint vao;
     int vertexCount;
     float modelMatrix[16];
+    GLuint textureID;
 } RenderableObject;
 
 typedef struct {

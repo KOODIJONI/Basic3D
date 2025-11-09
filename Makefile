@@ -3,7 +3,9 @@ CC = gcc
 CFLAGS = -Wall -g
 LDFLAGS = -lopengl32 -lgdi32
 
-CFLAGS = -Wall -g -Ilibs/cJSON-master
+CFLAGS = -Wall -g -Ilibs/cJSON-master -Ilibs/stb_image
+
+
 # Output binary
 TARGET = build/hello14.exe
 
@@ -21,7 +23,8 @@ SRCS = src/MAIN.c \
        src/gl_setup.c \
        src/object_manager.c \
        src/scene_loader.c \
-       libs/cJSON-master/cJSON.c
+       libs/cJSON-master/cJSON.c \
+       src/texture_loader.c \
 
 # Default rule
 all: $(TARGET)

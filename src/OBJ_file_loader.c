@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
 #include <direct.h>
@@ -128,6 +129,8 @@ int LoadOBJ(const char* filename, ObjMesh* mesh) {
                 }
                 mesh->texcoords = tmp;
                 mesh->texcoords[mesh->texcoord_count++] = u;
+                v = 1.0f - v;
+
                 mesh->texcoords[mesh->texcoord_count++] = v;
             } else {
                 fprintf(stderr, "Warning: malformed texcoord at line %d: %s", lineNumber, line);
@@ -149,70 +152,44 @@ int LoadOBJ(const char* filename, ObjMesh* mesh) {
                 fprintf(stderr, "Warning: malformed normal at line %d: %s", lineNumber, line);
             }
         } else if (line[0] == 'f' && line[1] == ' ') {
-            int faceVertexCount = 0;
-            int vis[3] = {-1, -1, -1};   // vertex indices
-            int vnis[3] = {-1, -1, -1};  // normal indices
-            int vtis[3] = {-1, -1, -1};  // texcoord indices (unused here)
+    int maxFaceVerts = 64;
+    int* vis  = malloc(maxFaceVerts * sizeof(int));
+    int* vnis = malloc(maxFaceVerts * sizeof(int));
+    int* vtis = malloc(maxFaceVerts * sizeof(int));
+    int faceVertexCount = 0;
 
-            char* token = strtok(line + 2, " \t\r\n");
-            while (token && faceVertexCount < 3) {
-                int vi, vti, vni;
-                parseFaceVertex(token, &vi, &vti, &vni);
-                vis[faceVertexCount] = vi;
-                vtis[faceVertexCount] = vti;
-                vnis[faceVertexCount] = vni;
-                faceVertexCount++;
-                token = strtok(NULL, " \t\r\n");
-            }
+    char* token = strtok(line + 2, " \t\r\n");
+    while (token && faceVertexCount < maxFaceVerts) {
+        int vi, vti, vni;
+        parseFaceVertex(token, &vi, &vti, &vni);
 
-            if (faceVertexCount == 3) {
-                for (int i = 0; i < 3; ++i) {
-                    int vi = vis[i];
-                    int vni = vnis[i];
+        vis[faceVertexCount]  = vi;
+        vtis[faceVertexCount] = vti;
+        vnis[faceVertexCount] = vni;
 
-                    if (vi < 0 || vi * 3 + 2 >= mesh->vertex_count) {
-                        fprintf(stderr, "Invalid vertex index %d at line %d\n", vi, lineNumber);
-                        continue;
-                    }
+        faceVertexCount++;
+        token = strtok(NULL, " \t\r\n");
+    }
 
-                    float vx = mesh->vertices[vi * 3 + 0];
-                    float vy = mesh->vertices[vi * 3 + 1];
-                    float vz = mesh->vertices[vi * 3 + 2];
-
-                    float nx = 0.0f, ny = 0.0f, nz = 0.0f;
-                    if (vni >= 0 && vni * 3 + 2 < mesh->normal_count) {
-                        nx = mesh->normals[vni * 3 + 0];
-                        ny = mesh->normals[vni * 3 + 1];
-                        nz = mesh->normals[vni * 3 + 2];
-                    }
-
-                    // Default white color
-                    float r = 1.0f, g = 1.0f, b = 1.0f;
-
-                    float* tmp = realloc(mesh->triangle_vertices, (mesh->triangle_vertex_count + 9) * sizeof(float));
-                    if (!tmp) {
-                        fprintf(stderr, "Out of memory expanding triangle buffer at line %d\n", lineNumber);
-                        fclose(file);
-                        return 2;
-                    }
-
-                    mesh->triangle_vertices = tmp;
-
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = vx;
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = vy;
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = vz;
-
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = nx;
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = ny;
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = nz;
-
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = r;
-                    mesh->triangle_vertices[mesh->triangle_vertex_count++] = g;
-                }
-            } else {
-                fprintf(stderr, "Warning: non-triangle face at line %d: %s", lineNumber, line);
-            }
+    if (faceVertexCount < 3) {
+        fprintf(stderr, "Warning: face with less than 3 vertices at line %d\n", lineNumber);
+    } else if (faceVertexCount == 3) {
+        AddFaceAsTriangles(mesh, vis, vnis, vtis, 3, lineNumber);
+    } else {
+        // Fan triangulation for n-gon
+        for (int i = 1; i < faceVertexCount - 1; i++) {
+            int tri[3]   = { vis[0], vis[i], vis[i+1] };
+            int tri_n[3] = { vnis[0], vnis[i], vnis[i+1] };
+            int tri_t[3] = { vtis[0], vtis[i], vtis[i+1] };
+            AddFaceAsTriangles(mesh, tri, tri_n, tri_t, 3, lineNumber);
         }
+        printf("Warning: face with %d vertices at line %d triangulated\n", faceVertexCount, lineNumber);
+    }
+
+    free(vis);
+    free(vnis);
+    free(vtis);
+}
     }
 
     if (ferror(file)) {
@@ -258,6 +235,7 @@ void printVertices(const ObjMesh* mesh) {
 
 // Compare two vertices for near-equality
 
+
 static inline int nearlyEqual(float a, float b, float eps) {
     return fabsf(a - b) < eps;
 }
@@ -268,79 +246,284 @@ static inline int sameVertex(const float* v1, const float* v2, float eps) {
            nearlyEqual(v1[2], v2[2], eps);
 }
 
-void ComputeSmoothNormals(ObjMesh* mesh) {
+static int FileExists(const char* filename) {
+    struct stat buffer;
+    return (stat(filename, &buffer) == 0);
+}
+
+
+typedef struct {
+    float x, y, z;
+} Vec3;
+
+
+#define EPSILON 1e-4f
+#define ANGLE_THRESHOLD cosf(45.0f * 3.14159f / 180.0f)
+#define FLOATS_PER_VERTEX 8
+
+// Simple hash table entry for vertex groups
+typedef struct VertexGroup {
+    Vec3 pos;
+    size_t* indices;   // indices of vertices with this position
+    size_t count;
+    size_t capacity;
+    struct VertexGroup* next;
+} VertexGroup;
+
+#define HASH_SIZE 4096
+
+// Hash function for Vec3
+static unsigned int Vec3Hash(const Vec3* v) {
+    int ix = (int)(v->x / EPSILON);
+    int iy = (int)(v->y / EPSILON);
+    int iz = (int)(v->z / EPSILON);
+    return (unsigned int)((ix*73856093) ^ (iy*19349663) ^ (iz*83492791)) % HASH_SIZE;
+}
+
+// Compare two vertices within EPSILON
+static int Vec3Equal(const Vec3* a, const Vec3* b) {
+    return fabsf(a->x - b->x) < EPSILON &&
+           fabsf(a->y - b->y) < EPSILON &&
+           fabsf(a->z - b->z) < EPSILON;
+}
+
+// Insert vertex index into hash table
+static void AddVertexGroup(VertexGroup** table, const Vec3* pos, size_t index) {
+    unsigned int h = Vec3Hash(pos);
+    VertexGroup* node = table[h];
+    while (node) {
+        if (Vec3Equal(&node->pos, pos)) {
+            if (node->count >= node->capacity) {
+                node->capacity = node->capacity ? node->capacity*2 : 4;
+                node->indices = realloc(node->indices, node->capacity * sizeof(size_t));
+            }
+            node->indices[node->count++] = index;
+            return;
+        }
+        node = node->next;
+    }
+
+    // New group
+    node = (VertexGroup*)malloc(sizeof(VertexGroup));
+    node->pos = *pos;
+    node->capacity = 4;
+    node->indices = (size_t*)malloc(node->capacity * sizeof(size_t));
+    node->indices[0] = index;
+    node->count = 1;
+    node->next = table[h];
+    table[h] = node;
+}
+
+// Free hash table
+static void FreeVertexGroups(VertexGroup** table) {
+    for (int i = 0; i < HASH_SIZE; ++i) {
+        VertexGroup* node = table[i];
+        while (node) {
+            VertexGroup* next = node->next;
+            free(node->indices);
+            free(node);
+            node = next;
+        }
+    }
+}
+
+// Compute smooth normals in pure C with hash map
+void ComputeSmoothNormals(const char* filename, ObjMesh* mesh) {
+    if(FileExists(filename)){
+        FILE * f = fopen(filename, "rb");
+        if(f){
+            size_t count =0;
+            fread(&count, sizeof(size_t),1,f);
+            if(count == mesh->triangle_vertex_count){
+                fread(mesh->triangle_vertices, sizeof(float), count, f);
+                fclose(f);
+                printf("[ComputeSmoothNormals] Loaded smooth normals from file.\n");
+                return;
+            }
+            else{
+                printf("[ComputeSmoothNormals] File mismatch, recalculating normals...\n");
+            }
+            fclose(f);
+        }
+    }
+    else{
+        printf("[ComputeSmoothNormals] No precomputed normals file found, calculating...\n");
+    }
     if (!mesh || !mesh->triangle_vertices || mesh->triangle_vertex_count == 0)
         return;
 
-    const float EPSILON = 1e-4f;
-    const float ANGLE_THRESHOLD = cosf(45.0f * 3.14159f / 180.0f); // 45° edge limit
-    const size_t vertexCount = mesh->triangle_vertex_count / 9;
-
-    float* positions = (float*)malloc(vertexCount * 3 * sizeof(float));
-    float* faceNormals = (float*)malloc(vertexCount * 3 * sizeof(float));
-
-    // Step 1: Copy positions
-    for (size_t i = 0; i < vertexCount; ++i) {
-        positions[i*3 + 0] = mesh->triangle_vertices[i*9 + 0];
-        positions[i*3 + 1] = mesh->triangle_vertices[i*9 + 1];
-        positions[i*3 + 2] = mesh->triangle_vertices[i*9 + 2];
+    if (FileExists(filename)) {
+        FILE* f = fopen(filename, "rb");
+        if (f) {
+            size_t count = 0;
+            fread(&count, sizeof(size_t), 1, f);
+            if (count == mesh->triangle_vertex_count) {
+                fread(mesh->triangle_vertices, sizeof(float), count, f);
+                fclose(f);
+                fprintf(stderr, "[ComputeSmoothNormals] Loaded smooth normals from file.\n");
+                return;
+            }
+            fclose(f);
+        }
+        fprintf(stderr, "[ComputeSmoothNormals] File mismatch, recalculating normals...\n");
     }
 
-    // Step 2: Compute per-face normals
+    size_t vertexCount = mesh->triangle_vertex_count / FLOATS_PER_VERTEX;
+    Vec3* positions = (Vec3*)malloc(sizeof(Vec3) * vertexCount);
+    Vec3* faceNormals = (Vec3*)malloc(sizeof(Vec3) * vertexCount);
+
+    if (!positions || !faceNormals) {
+        fprintf(stderr, "[ComputeSmoothNormals] Out of memory\n");
+        free(positions);
+        free(faceNormals);
+        return;
+    }
+
+    // Copy positions
+    for (size_t i = 0; i < vertexCount; ++i) {
+        positions[i].x = mesh->triangle_vertices[i*FLOATS_PER_VERTEX + 0];
+        positions[i].y = mesh->triangle_vertices[i*FLOATS_PER_VERTEX + 1];
+        positions[i].z = mesh->triangle_vertices[i*FLOATS_PER_VERTEX + 2];
+    }
+
+    // Compute face normals per triangle
     for (size_t i = 0; i + 3 <= vertexCount; i += 3) {
-        float* v0 = &positions[(i+0)*3];
-        float* v1 = &positions[(i+1)*3];
-        float* v2 = &positions[(i+2)*3];
-        float e1[3] = { v1[0]-v0[0], v1[1]-v0[1], v1[2]-v0[2] };
-        float e2[3] = { v2[0]-v0[0], v2[1]-v0[1], v2[2]-v0[2] };
-        float fn[3] = {
-            e1[1]*e2[2] - e1[2]*e2[1],
-            e1[2]*e2[0] - e1[0]*e2[2],
-            e1[0]*e2[1] - e1[1]*e2[0]
+        Vec3 v0 = positions[i];
+        Vec3 v1 = positions[i+1];
+        Vec3 v2 = positions[i+2];
+
+        Vec3 e1 = {v1.x - v0.x, v1.y - v0.y, v1.z - v0.z};
+        Vec3 e2 = {v2.x - v0.x, v2.y - v0.y, v2.z - v0.z};
+
+        Vec3 fn = {
+            e1.y * e2.z - e1.z * e2.y,
+            e1.z * e2.x - e1.x * e2.z,
+            e1.x * e2.y - e1.y * e2.x
         };
-        float len = sqrtf(fn[0]*fn[0] + fn[1]*fn[1] + fn[2]*fn[2]);
-        if (len > 1e-6f) { fn[0]/=len; fn[1]/=len; fn[2]/=len; }
 
-        for (int j = 0; j < 3; ++j) {
-            faceNormals[(i+j)*3 + 0] = fn[0];
-            faceNormals[(i+j)*3 + 1] = fn[1];
-            faceNormals[(i+j)*3 + 2] = fn[2];
+        float len = sqrtf(fn.x*fn.x + fn.y*fn.y + fn.z*fn.z);
+        if (len > 1e-6f) {
+            fn.x /= len; fn.y /= len; fn.z /= len;
         }
+
+        for (int j = 0; j < 3; ++j)
+            faceNormals[i+j] = fn;
     }
 
-    // Step 3: Smooth normals for shared vertices if their faces aren't too sharp
-    for (size_t i = 0; i < vertexCount; ++i) {
-        float sum[3] = {0, 0, 0};
-        int count = 0;
+    // Build hash table for vertices
+    VertexGroup* table[HASH_SIZE] = {0};
+    for (size_t i = 0; i < vertexCount; ++i)
+        AddVertexGroup(table, &positions[i], i);
 
-        for (size_t j = 0; j < vertexCount; ++j) {
-            if (sameVertex(&positions[i*3], &positions[j*3], EPSILON)) {
-                // Check if faces are similar direction
-                float* n1 = &faceNormals[i*3];
-                float* n2 = &faceNormals[j*3];
-                float dot = n1[0]*n2[0] + n1[1]*n2[1] + n1[2]*n2[2];
-                if (dot >= ANGLE_THRESHOLD) { // only smooth if faces are close in angle
-                    sum[0] += n2[0];
-                    sum[1] += n2[1];
-                    sum[2] += n2[2];
-                    count++;
+    // Smooth normals per vertex group
+    for (int h = 0; h < HASH_SIZE; ++h) {
+        VertexGroup* node = table[h];
+        while (node) {
+            for (size_t idx = 0; idx < node->count; ++idx) {
+                Vec3 sum = {0,0,0};
+                for (size_t jdx = 0; jdx < node->count; ++jdx) {
+                    float dot = faceNormals[node->indices[idx]].x*faceNormals[node->indices[jdx]].x +
+                                faceNormals[node->indices[idx]].y*faceNormals[node->indices[jdx]].y +
+                                faceNormals[node->indices[idx]].z*faceNormals[node->indices[jdx]].z;
+                    if (dot >= ANGLE_THRESHOLD) {
+                        sum.x += faceNormals[node->indices[jdx]].x;
+                        sum.y += faceNormals[node->indices[jdx]].y;
+                        sum.z += faceNormals[node->indices[jdx]].z;
+                    }
                 }
+                float len = sqrtf(sum.x*sum.x + sum.y*sum.y + sum.z*sum.z);
+                if (len > 1e-6f) {
+                    sum.x /= len; sum.y /= len; sum.z /= len;
+                }
+                size_t vi = node->indices[idx];
+                mesh->triangle_vertices[vi*FLOATS_PER_VERTEX + 3] = sum.x;
+                mesh->triangle_vertices[vi*FLOATS_PER_VERTEX + 4] = sum.y;
+                mesh->triangle_vertices[vi*FLOATS_PER_VERTEX + 5] = sum.z;
             }
-        }
-
-        if (count > 0) {
-            float len = sqrtf(sum[0]*sum[0] + sum[1]*sum[1] + sum[2]*sum[2]);
-            if (len > 1e-6f) {
-                sum[0] /= len; sum[1] /= len; sum[2] /= len;
-            }
-            mesh->triangle_vertices[i*9 + 3] = sum[0];
-            mesh->triangle_vertices[i*9 + 4] = sum[1];
-            mesh->triangle_vertices[i*9 + 5] = sum[2];
+            node = node->next;
         }
     }
 
+    SaveMeshVertices(filename, mesh);
     free(positions);
     free(faceNormals);
+    FreeVertexGroups(table);
 
-    fprintf(stderr, "[ComputeSmoothNormals] Edge-aware smoothing done (%zu verts)\n", vertexCount);
+    fprintf(stderr, "[ComputeSmoothNormals] Smoothing done (%zu verts)\n", vertexCount);
+}
+
+
+void AddFaceAsTriangles(ObjMesh* mesh, int* vis, int* vnis, int* vtis, int vcount, int lineNumber) {
+    if (vcount != 3) {
+        fprintf(stderr, "AddFaceAsTriangles expects exactly 3 vertices, got %d at line %d\n", vcount, lineNumber);
+        return;
+    }
+
+    for (int i = 0; i < 3; ++i) {
+        int vi = vis[i];
+        int vni = vnis[i];  
+        int vti = vtis[i];
+        if (vi < 0 || vi * 3 + 2 >= mesh->vertex_count) {
+            fprintf(stderr, "Invalid vertex index %d at line %d\n", vi, lineNumber);
+            continue;
+        }
+
+        float vx = mesh->vertices[vi * 3 + 0];
+        float vy = mesh->vertices[vi * 3 + 1];
+        float vz = mesh->vertices[vi * 3 + 2];
+
+        float nx = 0.0f, ny = 0.0f, nz = 0.0f;
+        if (vni >= 0 && vni * 3 + 2 < mesh->normal_count) {
+            nx = mesh->normals[vni * 3 + 0];
+            ny = mesh->normals[vni * 3 + 1];
+            nz = mesh->normals[vni * 3 + 2];
+        }
+        float u = 1.0f, v = 1.0f;
+        if (vti >= 0 && vti * 2 + 1 < mesh->texcoord_count) {
+            u = mesh->texcoords[vti * 2 + 0];
+            v = mesh->texcoords[vti * 2 + 1];
+        }
+        // Default white color
+        float r = 1.0f, g = 1.0f, b = 1.0f;
+
+        float* tmp = realloc(mesh->triangle_vertices, (mesh->triangle_vertex_count + 8) * sizeof(float));
+        if (!tmp) {
+            fprintf(stderr, "Out of memory expanding triangle buffer at line %d\n", lineNumber);
+            return;
+        }
+
+        mesh->triangle_vertices = tmp;
+
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = vx;
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = vy;
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = vz;
+
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = nx;
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = ny;
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = nz;
+
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = u;
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = v;
+    }
+}
+void SaveMeshVertices(const char* filename, const ObjMesh* mesh) {
+    if (!mesh || !mesh->triangle_vertices || mesh->triangle_vertex_count == 0) {
+        fprintf(stderr, "[SaveMeshVertices] Invalid mesh\n");
+        return;
+    }
+
+    FILE* f = fopen(filename, "wb");
+    if (!f) {
+        perror("[SaveMeshVertices] Failed to open file");
+        return;
+    }
+
+    // Write vertex count first (for easier loading)
+    fwrite(&mesh->triangle_vertex_count, sizeof(size_t), 1, f);
+
+    // Write the actual vertex data
+    fwrite(mesh->triangle_vertices, sizeof(float), mesh->triangle_vertex_count, f);
+
+    fclose(f);
+    fprintf(stderr, "[SaveMeshVertices] Saved %zu floats to %s\n", mesh->triangle_vertex_count, filename);
 }

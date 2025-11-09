@@ -11,6 +11,9 @@
         "renderableobject.h": "c",
         "shader.h": "c",
         "scene_loader.h": "c",
-        "direct.h": "c"
+        "direct.h": "c",
+        "format": "c",
+        "vector": "c",
+        "glext.h": "c"
     }
 }

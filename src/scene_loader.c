@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "texture_loader.h"
 void LoadSceneFromFile(const char* filename, ObjectVector* objects) {
     FILE* f = fopen(filename, "r");
     if (!f) {
@@ -35,16 +35,64 @@ void LoadSceneFromFile(const char* filename, ObjectVector* objects) {
     printf("Loading %d objects from scene file.\n", objectCount);
     for (int i = 0; i < objectCount; i++) {
         cJSON* objItem = cJSON_GetArrayItem(objectsArray, i);
-        const char* meshFile = cJSON_GetObjectItem(objItem, "mesh")->valuestring;
-        printf("Loading mesh file: %s\n", meshFile);
+        cJSON* meshItem = cJSON_GetObjectItem(objItem, "mesh");
+        if (!meshItem || !meshItem->valuestring) {
+            printf("Object %d missing mesh file!\n", i);
+            continue;
+        }
+        const char* meshFile = meshItem->valuestring;
 
         ObjMesh mesh;
         if (LoadOBJ(meshFile, &mesh)) {
             printf("Failed to load OBJ: %s\n", meshFile);
             continue;
         }
+        
+        cJSON* textureItem = cJSON_GetObjectItem(objItem, "textures");
+        const char* textureFile = NULL;
+        if (textureItem && textureItem->valuestring) {
+            printf("Object %d tex file!\n", i);
+            printf("Texture file: %s\n", textureItem->valuestring);
+            textureFile = textureItem->valuestring;
+            printf("Texture file: %s\n", textureFile);
+
+            GLuint myTexture = LoadTexture(textureFile); // path to your image
+            if (myTexture == 0) {
+                fprintf(stderr, "Failed to load texture!\n");
+                continue;
+
+            }
+            else{
+                printf("Texture loaded successfully with ID: %u\n", myTexture);
+                mesh.textureID = myTexture;
+            }
+        }
+        else{
+            printf("Object %d has no texture file.\n", i);
+
+        }
+
+         
+        
+
         printf("Loaded mesh with %zu triangle vertices.\n", mesh.triangle_vertex_count);
-       //omputeSmoothNormals(&mesh);
+
+        cJSON* folder = cJSON_GetObjectItem(objItem, "folder");
+         const char* folderString = NULL; 
+         if (folder && folder->valuestring) {
+            folderString = folder->valuestring;
+             char file[512];
+             snprintf(file, sizeof(file), "%s/smoothNormals.bins", folderString);
+             printf("Looking for smooth normals file: %s\n", file);
+             ComputeSmoothNormals(file,&mesh);
+
+         }
+
+
+
+
+
+
         printf("Computed smooth normals for mesh.\n");
         GLuint vao = GLSetup_CreateVAO(mesh.triangle_vertices, mesh.triangle_vertex_count,8);
 
@@ -68,6 +116,7 @@ void LoadSceneFromFile(const char* filename, ObjectVector* objects) {
         RenderableObject obj;
         obj.vao = vao;
         obj.vertexCount = mesh.triangle_vertex_count;
+        obj.textureID = mesh.textureID;
         memcpy(obj.modelMatrix, model, sizeof(float) * 16);
 
         // Add to vector

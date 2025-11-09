@@ -2,7 +2,7 @@
 #define OBJ_FILE_LOADER_H
 
 #include <stddef.h>
-
+#include <GL/gl.h>
 typedef struct {
     float* vertices;     
     size_t vertex_count;  
@@ -21,13 +21,22 @@ typedef struct {
 
     float transform[16];
 
+    GLuint textureID;
+
     float color[3]; 
 } ObjMesh;
+
+typedef struct VertexNode {
+    size_t index;
+    struct VertexNode* next;
+} VertexNode;
 
 int LoadOBJ(const char* filename, ObjMesh* mesh);
 void freeMesh(ObjMesh* mesh);
 
 void printVertices(const ObjMesh* mesh);
-void ComputeSmoothNormals(ObjMesh* mesh);
+void ComputeSmoothNormals(const char * filename ,ObjMesh* mesh);
+void AddFaceAsTriangles(ObjMesh* mesh, int* vis, int* vnis, int* vtis, int vcount, int lineNumber);
+void SaveMeshVertices(const char* filename, const ObjMesh* mesh);
 
 #endif

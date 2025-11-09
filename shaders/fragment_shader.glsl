@@ -1,18 +1,22 @@
 #version 330 core
 
-in vec3 fragPos;
-in vec3 fragNormal;
-in vec3 fragColor;
+in vec2 fragTexCoord;
+in float lightIntensity;
+
+uniform sampler2D uTexture; // bound texture
 
 out vec4 FragColor;
 
-uniform vec3 lightDir = normalize(vec3(0.3, 1.0, 0.0)); // directional light
-uniform vec3 lightColor = vec3(1.0, 1.0, 1.0);
+void main()
+{
+    vec3 texColor = texture(uTexture, fragTexCoord).rgb;
 
-void main() {
-    vec3 normal = normalize(fragNormal);
-    float diff = max(dot(normal, normalize(lightDir)), 0.0); // Lambert
-    vec3 color = fragColor * diff * lightColor;
+    // Simple diffuse shading
+    vec3 finalColor = texColor * lightIntensity;
 
-    FragColor = vec4(color, 1.0);
+    // Optional: add ambient light
+    vec3 ambient = 0.5 * texColor;
+    finalColor += ambient;
+
+    FragColor = vec4(finalColor, 1.0);
 }

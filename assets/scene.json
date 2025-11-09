@@ -1,34 +1,29 @@
 {
   "objects": [
     {
-      "mesh": "assets/largeTerrain.obj",
-      "position": [0.0, 0.0, -10.0],
+      "folder": "assets/object1",
+      "mesh": "assets/object1/oil_drum.obj",
+      "position": [100.0, -79.0, -350.00],
       "rotation": [0.0, 0.0, 0.0],
-      "scale": [5.0, 4.0, 5.0]
+      "scale": [0.3, 0.3, 0.3],
+      "textures": "assets/object1/textures/OilDrum_BaseColor.png"
     },
     {
-      "mesh": "assets/cube2.obj",
-      "position": [5.0, 0.0, -10.0],
-      "rotation": [0.0, 0.0, 0.0],
-      "scale": [1.0, 1.0, 1.0]
+      "folder": "assets/cartoon_building",
+      "mesh": "assets/cartoon_building/cartoon_building.obj",
+      "position": [-100.0, -90.0, -350.0],
+      "rotation": [0.0, -1.57, 0.0],
+      "scale": [2.0, 2.0, 2.0],
+      "textures": "assets/cartoon_building/textures/cartoon_building_Albedo.png"
     },
     {
-      "mesh": "assets/cube2.obj",
-      "position": [5.0, 0.0, 10.0],
+      "folder": "assets/Road/ROAD",
+      "mesh": "assets/ROAD/ROAD/ROAD4.obj",
+      "position": [0.0, 1000.0, 0.0],
       "rotation": [0.0, 0.0, 0.0],
-      "scale": [1.0, 1.0, 1.0]
-    },
-    {
-      "mesh": "assets/cube2.obj",
-      "position": [-5.0, 0.0, 20.0],
-      "rotation": [0.0, 0.0, 0.0],
-      "scale": [5.0, 1.0, 1.0]
-    },
-    {
-      "mesh": "assets/cube2.obj",
-      "position": [-5.0, 0.0, -15.0],
-      "rotation": [0.0, 0.0, 0.0],
-      "scale": [1.0, 1.0, 1.0]
+      "scale": [3.0, 3.0, 3.0],
+      "textures": "assets/ROAD/ROAD/ROAD.JPG"
     }
+    
   ]
 }
