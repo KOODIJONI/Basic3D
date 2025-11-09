@@ -32,23 +32,29 @@ luettava ja muokattava. Loin myös OBJ_loader.c tiedoston obj tiedostojen lataam
 OBJ_loader.c  tarkoitus on lukea .obj muotoine tiedosto, ja tallentaa sen tiedot ObjectVectoriin , joka koostuu MeshObj structeista, jotka sisältävät tiedot
 verticistä, vertexien määrästä, normaleista, indiceistä, indexeistä, triangleista, vertex 
 
-    float* texcoords;     
-    size_t texcoord_count; 
 
-    float* normals;       
-    size_t normal_count;  
-
-    int* indices;         
-    size_t index_count;   
-
-    float* triangle_vertices; 
-    size_t triangle_vertex_count;
-
-    float transform[16];
-
-    GLuint textureID;
-
-    float color[3]; 
+    typedef struct {
+        float* vertices;     
+        size_t vertex_count;  
+    
+        float* texcoords;     
+        size_t texcoord_count; 
+    
+        float* normals;       
+        size_t normal_count;  
+    
+        int* indices;         
+        size_t index_count;   
+    
+        float* triangle_vertices; 
+        size_t triangle_vertex_count;
+    
+        float transform[16];
+    
+        GLuint textureID;
+    
+        float color[3]; 
+    } ObjMesh;
 <img width="300" height="250" alt="image" src="https://github.com/user-attachments/assets/cc4397c8-5413-4385-98da-27572af6e1fd" />
 
 ## Osa 6: Ensimmäinen 3D renderöinti
