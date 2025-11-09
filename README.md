@@ -3,12 +3,16 @@
 Minua on aina kiehtonut, miten 3D - grafiikka toimii ja miten kaksiulotteiselle näytölle voi luoda illuusion kolmannesta ulottuvuudesta. Shaderien ,tekstuurien ja 3D-tiedostojen toiminta periaate oli myös minulle mysteeri. Tässä projektissa perehdyn näihin asioihin ja rakennan 3D-moottorin tyhjästä hakemistosta, käyttäen vain openGL, CJson ja StbImage kirjastoja.
 
 ## Osa 1: Ikkunan luominen openGL kirjastolla ja testi kolmio
-Aloitin projektin luomien ohjelmoimalla openGL kontekstin ja ikkunan main.c tiedostoon. Ja loin renderer.c tiedoston, jossa aloin tekemään logiikkaa. Ensimmäisen grafiikka piirrosta varten.   Koodasin alustavan shaderi ohjelman, joka piirtää suuren keltaisen kolmion näytölle
+Aloitin projektin luomien ohjelmoimalla openGL kontekstin ja ikkunan main.c tiedostoon. Ja loin renderer.c tiedoston, jossa aloin tekemään logiikkaa. Ensimmäisen grafiikka piirrosta varten. Koodasin alustavan shaderi ohjelman, joka piirtää suuren keltaisen kolmion näytölle. Tämän testikolmion tarkoitus oli selvittää kuinka OpenGL shaderit piirtää näytölle. Kaikki 3D objectit yleensä koostuvat kolmioista tai neliöistä, joten tämä oli jo merkittävä askel projektissa. Seuraavaksi oli vuorossa luoda matriisi operatiot, jotka käsittelisivät 3D tiedostojen sijainti pisteitä.
 
 
 <img width="358" height="333" alt="image" src="https://github.com/user-attachments/assets/b7b51086-1412-461b-a411-640990fbc068" />
 
 ## Osa 2: Matriisi operaatiot 
+
+Loin matrix_utils.c tiedoston, jonne aloin luomaan matriisi operaatioita. Matriisien ja vectoreiden käsittelyyn. Loin perus kertolasku ja ristitulo funktiot seka funktiot jotka luo identiteettimatriisin, skaalausmatriisin, rotaatio matriisin ja scaalaus matriisit joita voi kertoa keskenään tehdäkseen eri operaatioita.
+Saatat miettiä, miten näitä matriiseja käytetään. Ajatellaan, vaikka että meillä on neliö joka koostuu kahdeksasta pisteestä. Näillä kaikilla pisteillä on kolme float arvoa, jotka kuvaavat niiden paikkaa kolmeulotteisessa ympäristössä. Kun kerromme niitä lukuja näillä matriiseilla, voimme liikuttaa, scaalata ja kääntää näitä obejekteja näillä matriisi operaatioilla.
+
 
 ## Osa 3: Kamera ja orbitaalikontrollit
 
