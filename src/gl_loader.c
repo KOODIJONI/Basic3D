@@ -30,6 +30,11 @@ PFNGLDELETEVERTEXARRAYSPROC     glDeleteVertexArrays = NULL;
 PFNGLDELETEPROGRAMPROC          glDeleteProgram = NULL;
 PFNGLDELETESHADERPROC           glDeleteShader = NULL;
 PFNGLUNIFORM1IPROC              glUniform1i = NULL;
+PFNGLACTIVETEXTUREPROC           glActiveTexture = NULL;
+PFNGLUNIFORM3FVPROC           glUniform3fv = NULL;
+
+//LOAD set active texture
+
 
 #define LOAD_GL_FUNC(type, name)                     \
     name = (type)wglGetProcAddress(#name);           \
@@ -65,6 +70,8 @@ void LoadGLFunctions(void) {
     LOAD_GL_FUNC(PFNGLDELETEPROGRAMPROC,          glDeleteProgram);
     LOAD_GL_FUNC(PFNGLDELETESHADERPROC,           glDeleteShader);
     LOAD_GL_FUNC(PFNGLUNIFORM1IPROC, glUniform1i);
+    LOAD_GL_FUNC(PFNGLACTIVETEXTUREPROC, glActiveTexture);
+    LOAD_GL_FUNC(PFNGLUNIFORM3FVPROC, glUniform3fv);
 
 
     printf("All OpenGL functions loaded successfully.\n");

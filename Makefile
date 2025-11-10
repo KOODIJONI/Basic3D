@@ -1,7 +1,7 @@
 # Compiler and flags
 CC = gcc
 CFLAGS = -Wall -g
-LDFLAGS = -lopengl32 -lgdi32
+LDFLAGS = -lopengl32 -lgdi32 -lglu32
 
 CFLAGS = -Wall -g -Ilibs/cJSON-master -Ilibs/stb_image
 
@@ -25,6 +25,7 @@ SRCS = src/MAIN.c \
        src/scene_loader.c \
        libs/cJSON-master/cJSON.c \
        src/texture_loader.c \
+       src/texture_utils.c
 
 # Default rule
 all: $(TARGET)

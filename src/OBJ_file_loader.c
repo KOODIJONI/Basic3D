@@ -183,7 +183,10 @@ int LoadOBJ(const char* filename, ObjMesh* mesh) {
             int tri_t[3] = { vtis[0], vtis[i], vtis[i+1] };
             AddFaceAsTriangles(mesh, tri, tri_n, tri_t, 3, lineNumber);
         }
-        printf("Warning: face with %d vertices at line %d triangulated\n", faceVertexCount, lineNumber);
+        if (lineNumber % 1000 == 0) {
+            printf("Triangulated an n-gon with %d vertices at line %d\n", faceVertexCount, lineNumber);
+            
+        }
     }
 
     free(vis);
@@ -259,7 +262,7 @@ typedef struct {
 
 #define EPSILON 1e-4f
 #define ANGLE_THRESHOLD cosf(45.0f * 3.14159f / 180.0f)
-#define FLOATS_PER_VERTEX 8
+#define FLOATS_PER_VERTEX 11
 
 // Simple hash table entry for vertex groups
 typedef struct VertexGroup {
@@ -486,7 +489,7 @@ void AddFaceAsTriangles(ObjMesh* mesh, int* vis, int* vnis, int* vtis, int vcoun
         // Default white color
         float r = 1.0f, g = 1.0f, b = 1.0f;
 
-        float* tmp = realloc(mesh->triangle_vertices, (mesh->triangle_vertex_count + 8) * sizeof(float));
+        float* tmp = realloc(mesh->triangle_vertices, (mesh->triangle_vertex_count + 11) * sizeof(float));
         if (!tmp) {
             fprintf(stderr, "Out of memory expanding triangle buffer at line %d\n", lineNumber);
             return;
@@ -504,6 +507,10 @@ void AddFaceAsTriangles(ObjMesh* mesh, int* vis, int* vnis, int* vtis, int vcoun
 
         mesh->triangle_vertices[mesh->triangle_vertex_count++] = u;
         mesh->triangle_vertices[mesh->triangle_vertex_count++] = v;
+
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = 0.0f; // tangent x
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = 0.0f; // tangent y
+        mesh->triangle_vertices[mesh->triangle_vertex_count++] = 0.0f; // tangent z
     }
 }
 void SaveMeshVertices(const char* filename, const ObjMesh* mesh) {
@@ -526,4 +533,45 @@ void SaveMeshVertices(const char* filename, const ObjMesh* mesh) {
 
     fclose(f);
     fprintf(stderr, "[SaveMeshVertices] Saved %zu floats to %s\n", mesh->triangle_vertex_count, filename);
+}
+void ComputeTangents(ObjMesh* mesh) {
+    if (!mesh || !mesh->triangle_vertices) return;
+
+    size_t vertexCount = mesh->triangle_vertex_count / FLOATS_PER_VERTEX;
+
+    for (size_t i = 0; i + 3 <= vertexCount; i += 3) {
+        float* v0 = &mesh->triangle_vertices[i*FLOATS_PER_VERTEX + 0];
+        float* v1 = &mesh->triangle_vertices[(i+1)*FLOATS_PER_VERTEX + 0];
+        float* v2 = &mesh->triangle_vertices[(i+2)*FLOATS_PER_VERTEX + 0];
+
+        // Positions
+        float x1 = v1[0] - v0[0];
+        float y1 = v1[1] - v0[1];
+        float z1 = v1[2] - v0[2];
+
+        float x2 = v2[0] - v0[0];
+        float y2 = v2[1] - v0[1];
+        float z2 = v2[2] - v0[2];
+
+        // UVs
+        float s1 = v1[6] - v0[6];
+        float t1 = v1[7] - v0[7];
+        float s2 = v2[6] - v0[6];
+        float t2 = v2[7] - v0[7];
+
+        float r = (s1 * t2 - s2 * t1);
+        if (fabsf(r) < 1e-8f) r = 1.0f; // avoid division by zero
+        else r = 1.0f / r;
+
+        float tx = (t2 * x1 - t1 * x2) * r;
+        float ty = (t2 * y1 - t1 * y2) * r;
+        float tz = (t2 * z1 - t1 * z2) * r;
+
+        // Store tangent per vertex
+        for (int j = 0; j < 3; ++j) {
+            mesh->triangle_vertices[(i+j)*FLOATS_PER_VERTEX + 8] = tx;
+            mesh->triangle_vertices[(i+j)*FLOATS_PER_VERTEX + 9] = ty;
+            mesh->triangle_vertices[(i+j)*FLOATS_PER_VERTEX + 10] = tz;
+        }
+    }
 }

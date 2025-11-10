@@ -18,6 +18,9 @@
 #include "gl_setup.h"
 #include "object_manager.h"
 #include "scene_loader.h"
+#include <GL/glu.h>
+#include "texture_utils.h"
+
 static ObjMesh terrainMesh = {0};
 static ObjMesh treeMesh = {0};
 
@@ -44,6 +47,8 @@ float directionalLight[3] = {0.3f, 1.0f, 0.0f};
 float lightColor[3] = {0.0f, 1.01f, 1.0f};
 
 static ObjectVector objects; 
+
+GLuint emptyTexture;
 
 void Renderer_Init(void) {
 
@@ -82,9 +87,43 @@ void Renderer_Init(void) {
     uniformViewLoc       = ShaderManager_GetUniformLocation(shaderProgram, "uView");
     uniformModelLoc      = ShaderManager_GetUniformLocation(shaderProgram, "uModel");
     uniformCastsShadowsLoc = glGetUniformLocation(shaderProgram, "uCastsShadows");
-
+    
     GLint uTextureLoc = glGetUniformLocation(shaderProgram, "uTexture");
+    GLint uNormalMapLoc = glGetUniformLocation(shaderProgram, "uNormalMap");
+    GLint uRoughnessMapLoc = glGetUniformLocation(shaderProgram, "uRoughnessMap");
+    GLint uMetalnessMapLoc = glGetUniformLocation(shaderProgram, "uMetalnessMap");
+    GLint uAOMapLoc = glGetUniformLocation(shaderProgram, "uAOMap");
 
+
+    GLint uLightDirLoc = glGetUniformLocation(shaderProgram, "uLightDir");
+    printf("uLightDir location: %d\n", uLightDirLoc);
+
+    if (uLightDirLoc != -1) {
+        float len = sqrtf(directionalLight[0]*directionalLight[0] +
+                        directionalLight[1]*directionalLight[1] +
+                        directionalLight[2]*directionalLight[2]);
+        float normDir[3] = { directionalLight[0]/len, directionalLight[1]/len, directionalLight[2]/len };
+        glUniform3fv(uLightDirLoc, 1, normDir);
+    }
+
+    if (uNormalMapLoc != -1) {
+        glUniform1i(uNormalMapLoc, 1); 
+    }
+
+    if (uTextureLoc != -1) {
+        glUniform1i(uTextureLoc, 0); 
+    }
+    if (uRoughnessMapLoc != -1) {
+        glUniform1i(uRoughnessMapLoc, 2); 
+    }
+    if (uMetalnessMapLoc != -1) {
+        glUniform1i(uMetalnessMapLoc, 3); 
+    }
+    if (uAOMapLoc != -1) {
+        glUniform1i(uAOMapLoc, 4); 
+    }
+
+    emptyTexture = CreateWhiteTexture();
 
 
     float fovY = 45.0f * (3.1415926f / 180.0f); 
@@ -94,20 +133,37 @@ void Renderer_Init(void) {
     CreatePerspectiveProjection(fovY, aspect, nearr, farr, projectionMatrix);
 }
 
-void DrawObject(GLuint vao, int vertexCount, float* modelMatrix, GLuint textureID) {
+void DrawObject(GLuint vao, int vertexCount, float* modelMatrix, GLuint textureID, GLuint normalID, GLuint roughnessID, GLuint metalnessID, GLuint aoID) {
     glBindVertexArray(vao);
 
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        printf("OpenGL error before drawing: %s\n", gluErrorString(err));
+        printf("At line: %d\n", __LINE__);
+    }
     // Upload the model matrix
     if (uniformModelLoc != -1) {
         glUniformMatrix4fv(uniformModelLoc, 1, GL_FALSE, modelMatrix);
     }
-
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        printf("OpenGL error: %s\n", gluErrorString(err));
+    }
     // Bind the texture
-    if (textureID != 0) {
-       glEnable(GL_TEXTURE_2D);
+   if (textureID != 0) {
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textureID);
     }
-    
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, normalID ? normalID : emptyTexture);
+
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, roughnessID ? roughnessID : emptyTexture);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, metalnessID ? metalnessID : emptyTexture);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, aoID ? aoID : emptyTexture);
+
 
     glDrawArrays(GL_TRIANGLES, 0, vertexCount); // Or glDrawElements if using EBO
 
@@ -135,13 +191,47 @@ void Renderer_Draw(float deltaTime) {
         glUniformMatrix4fv(uniformViewLoc, 1, GL_FALSE, viewMatrix);
     }
 
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        printf("OpenGL error: %s\n", gluErrorString(err));
+        printf("At line: %d\n", __LINE__);
+    }
+
     // Draw all objects in the vector
     for (int i = 0; i < objects.size; i++) {
         RenderableObject* obj = &objects.data[i];
         if (uniformCastsShadowsLoc != -1) {
             glUniform1i(uniformCastsShadowsLoc, obj->castsShadows ? 1 : 0);
         }
-        DrawObject(obj->vao, obj->vertexCount, obj->modelMatrix,obj->textureID);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, obj->normalID ? obj->normalID : emptyTexture);
+
+        glActiveTexture(GL_TEXTURE2);
+        glBindTexture(GL_TEXTURE_2D, obj->roughnessID ? obj->roughnessID : emptyTexture);
+
+        glActiveTexture(GL_TEXTURE3);
+        glBindTexture(GL_TEXTURE_2D, obj->metalnessID ? obj->metalnessID : emptyTexture);
+
+        glActiveTexture(GL_TEXTURE4);
+        glBindTexture(GL_TEXTURE_2D, obj->aoID ? obj->aoID : emptyTexture);
+
+        // Make sure shader uses unit 1
+        GLint uNormalMapLoc = glGetUniformLocation(shaderProgram, "uNormalMap");
+        glUniform1i(uNormalMapLoc, 1);
+
+        GLint uRoughnessMapLoc = glGetUniformLocation(shaderProgram, "uRoughnessMap");
+        glUniform1i(uRoughnessMapLoc, 2);
+
+        GLint uMetalnessMapLoc = glGetUniformLocation(shaderProgram, "uMetalnessMap");
+        glUniform1i(uMetalnessMapLoc, 3);
+
+        GLint uAOMapLoc = glGetUniformLocation(shaderProgram, "uAOMap");
+        glUniform1i(uAOMapLoc, 4);
+
+        DrawObject(obj->vao, obj->vertexCount, obj->modelMatrix,obj->textureID,obj->normalID,obj->roughnessID,obj->metalnessID,obj->aoID);
+        
+    
     }
 }
 
@@ -174,7 +264,7 @@ void UpdateProjectionMatrix(float aspect) {
 
 void PrintVertexAndNormalBuffer(float* buffer, int vertexCount) {
     for (int i = 0; i < vertexCount; i++) {
-        int baseIdx = i * 6;
+        int baseIdx = i * 11;
         printf("Vertex %d: Pos(%.3f, %.3f, %.3f), Normal(%.3f, %.3f, %.3f)\n",
             i,
             buffer[baseIdx], buffer[baseIdx + 1], buffer[baseIdx + 2],

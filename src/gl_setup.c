@@ -13,8 +13,8 @@ static void CheckGLError(const char* msg) {
 GLuint GLSetup_CreateVAO(const float* data, int vertexCount, int componentsPerVertex) {
     // NOTE: componentsPerVertex here means floats per vertex total (e.g. 9)
     // We assume the format is: pos(3 floats), normal(3 floats), color(3 floats)
-    if (componentsPerVertex != 8) {
-        printf("Warning: Expected componentsPerVertex = 8 for pos+normal+color, got %d\n", componentsPerVertex);
+    if (componentsPerVertex != 11) {
+        printf("Warning: Expected componentsPerVertex = 11 for pos+normal+color, got %d\n", componentsPerVertex);
     }
 
     GLuint vao = 0, vbo = 0;
@@ -46,12 +46,19 @@ GLuint GLSetup_CreateVAO(const float* data, int vertexCount, int componentsPerVe
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, componentsPerVertex * sizeof(float), (void*)(3 * sizeof(float)));
     CheckGLError("glVertexAttribPointer(1)");
 
-    // color (location = 2)
-  glEnableVertexAttribArray(2);
+    
+    // texture (location = 2)
+    glEnableVertexAttribArray(2);
     CheckGLError("glEnableVertexAttribArray(2)");
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, componentsPerVertex * sizeof(float), (void*)(6 * sizeof(float)));
     CheckGLError("glVertexAttribPointer(2)");
 
+    // tangent (location = 3)
+    glEnableVertexAttribArray(3);
+    CheckGLError("glEnableVertexAttribArray(3)");
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, componentsPerVertex * sizeof(float), (void*)(8 * sizeof(float)));
+    CheckGLError("glVertexAttribPointer(3)");
+    
     glBindVertexArray(0);
     CheckGLError("glBindVertexArray (unbind)");
 
@@ -88,6 +95,8 @@ GLuint GLSetup_CreateDynamicVAO(GLuint* outVBO) {
     CheckGLError("glEnableVertexAttribArray (color)");
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     CheckGLError("glVertexAttribPointer (color)");
+
+    
 
     glBindVertexArray(0);
     CheckGLError("glBindVertexArray (unbind)");

@@ -69,10 +69,113 @@ void LoadSceneFromFile(const char* filename, ObjectVector* objects) {
         }
         else{
             printf("Object %d has no texture file.\n", i);
+            mesh.textureID = 0;
 
         }
 
-         
+        cJSON* normalItem = cJSON_GetObjectItem(objItem, "normals");
+        const char* normalFile = NULL;
+        if (normalItem && normalItem->valuestring) {
+            printf("Object %d normal map file!\n", i);
+            printf("Normal map file: %s\n", normalItem->valuestring);
+            normalFile = normalItem->valuestring;
+            printf("Normal map file: %s\n", normalFile);
+
+            GLuint myNormalMap = LoadTexture(normalFile); // path to your image
+            if (myNormalMap == 0) {
+                fprintf(stderr, "Failed to load normal map texture!\n");
+                continue;
+
+            }
+            else{
+                printf("Normal map loaded successfully with ID: %u\n", myNormalMap);
+                mesh.normalID = myNormalMap;
+
+            }
+        }
+        else{
+            printf("Object %d has no normal map file.\n", i);
+            mesh.normalID = 0;
+
+        }
+
+        cJSON * roughnessItem = cJSON_GetObjectItem(objItem, "roughness");
+        const char* roughnessFile = NULL;
+        if (roughnessItem && roughnessItem->valuestring) {
+            printf("Object %d roughness map file!\n", i);
+            printf("Roughness map file: %s\n", roughnessItem->valuestring);
+            roughnessFile = roughnessItem->valuestring;
+            printf("Roughness map file: %s\n", roughnessFile);
+
+            GLuint myRoughnessMap = LoadTexture(roughnessFile); // path to your image
+            if (myRoughnessMap == 0) {
+                fprintf(stderr, "Failed to load roughness map texture!\n");
+                continue;
+
+            }
+            else{
+                printf("Roughness map loaded successfully with ID: %u\n", myRoughnessMap);
+                mesh.roughnessID = myRoughnessMap;
+            }
+        }
+        else{
+            printf("Object %d has no roughness map file.\n", i);
+            mesh.roughnessID = 0;
+        }
+
+        cJSON * metalnessItem = cJSON_GetObjectItem(objItem, "metalness");
+        const char* metalnessFile = NULL;
+        if (metalnessItem && metalnessItem->valuestring) {
+            printf("Object %d metalness map file!\n", i);
+            printf("Metalness map file: %s\n", metalnessItem->valuestring);
+            metalnessFile = metalnessItem->valuestring;
+            printf("Metalness map file: %s\n", metalnessFile);
+
+            GLuint myMetalnessMap = LoadTexture(metalnessFile); // path to your image
+            if (myMetalnessMap == 0) {
+                fprintf(stderr, "Failed to load metalness map texture!\n");
+                continue;
+
+            }
+            else{
+                printf("Metalness map loaded successfully with ID: %u\n", myMetalnessMap);
+                mesh.metalnessID = myMetalnessMap;
+            }
+        }
+        else{
+            mesh.metalnessID = 0;
+            printf("Object %d has no metalness map file.\n", i);
+
+        }
+
+            
+        cJSON * aoItem = cJSON_GetObjectItem(objItem, "ambient_occlusion");
+        const char* aoFile = NULL;
+        if (aoItem && aoItem->valuestring) {
+            printf("Object %d ambient occlusion map file!\n", i);
+            printf("Ambient occlusion map file: %s\n", aoItem->valuestring);
+            aoFile = aoItem->valuestring;
+            printf("Ambient occlusion map file: %s\n", aoFile);
+
+            GLuint myAOMap = LoadTexture(aoFile); // path to your image
+            if (myAOMap == 0) {
+                fprintf(stderr, "Failed to load ambient occlusion map texture!\n");
+                continue;
+
+            }
+            else{
+                printf("Ambient occlusion map loaded successfully with ID: %u\n", myAOMap);
+                mesh.aoID = myAOMap;
+            }
+        }
+        else{
+            printf("Object %d has no ambient occlusion map file.\n", i);
+            mesh.aoID = 0;
+
+        }
+
+
+
         
 
         printf("Loaded mesh with %zu triangle vertices.\n", mesh.triangle_vertex_count);
@@ -85,6 +188,7 @@ void LoadSceneFromFile(const char* filename, ObjectVector* objects) {
              snprintf(file, sizeof(file), "%s/smoothNormals.bins", folderString);
              printf("Looking for smooth normals file: %s\n", file);
              ComputeSmoothNormals(file,&mesh);
+             ComputeTangents(&mesh);
 
          }
 
@@ -94,7 +198,7 @@ void LoadSceneFromFile(const char* filename, ObjectVector* objects) {
 
 
         printf("Computed smooth normals for mesh.\n");
-        GLuint vao = GLSetup_CreateVAO(mesh.triangle_vertices, mesh.triangle_vertex_count,8);
+        GLuint vao = GLSetup_CreateVAO(mesh.triangle_vertices, mesh.triangle_vertex_count,11);
 
         cJSON* pos = cJSON_GetObjectItem(objItem, "position");
         cJSON* rot = cJSON_GetObjectItem(objItem, "rotation");
@@ -126,6 +230,11 @@ void LoadSceneFromFile(const char* filename, ObjectVector* objects) {
         obj.vao = vao;
         obj.vertexCount = mesh.triangle_vertex_count;
         obj.textureID = mesh.textureID;
+        obj.normalID = mesh.normalID;
+        obj.roughnessID = mesh.roughnessID;
+        obj.metalnessID = mesh.metalnessID;
+        obj.aoID = mesh.aoID;
+
         memcpy(obj.modelMatrix, model, sizeof(float) * 16);
 
         // Add to vector

@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <GL/gl.h>
+
 typedef struct {
     float* vertices;     
     size_t vertex_count;  
@@ -22,7 +23,10 @@ typedef struct {
     float transform[16];
 
     GLuint textureID;
-
+    GLuint normalID;
+    GLuint roughnessID;
+    GLuint metalnessID;
+    GLuint aoID;
     float color[3]; 
 } ObjMesh;
 
@@ -38,5 +42,6 @@ void printVertices(const ObjMesh* mesh);
 void ComputeSmoothNormals(const char * filename ,ObjMesh* mesh);
 void AddFaceAsTriangles(ObjMesh* mesh, int* vis, int* vnis, int* vtis, int vcount, int lineNumber);
 void SaveMeshVertices(const char* filename, const ObjMesh* mesh);
+void ComputeTangents(ObjMesh* mesh);
 
 #endif

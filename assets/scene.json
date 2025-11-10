@@ -1,3 +1,4 @@
+
 {
   "objects": [
     {
@@ -7,6 +8,10 @@
       "rotation": [0.0, 0.0, 0.0],
       "scale": [0.3, 0.3, 0.3],
       "textures": "assets/object1/textures/OilDrum_BaseColor.png",
+      "normals": "assets/object1/textures/OilDrum_Normal.png",
+      "roughness": "assets/object1/textures/OilDrum_Roughness.png",
+      "metalness": "assets/object1/textures/OilDrum_Metallic.png",
+      "ambient_occlusion": "assets/object1/textures/OilDrum_AO.png",
       "shadows": true
     },
     {
@@ -16,6 +21,10 @@
       "rotation": [0.0, -1.57, 0.0],
       "scale": [2.0, 2.0, 2.0],
       "textures": "assets/cartoon_building/textures/cartoon_building_Albedo.png",
+      "normals": "assets/cartoon_building/textures/cartoon_building_Normal.png",
+      "roughness": "assets/cartoon_building/textures/cartoon_building_Roughness.png",
+      "metalness": "assets/cartoon_building/textures/cartoon_building_Metallic.png",
+      "ambient_occlusion": "assets/cartoon_building/textures/cartoon_building_AO.png",
       "shadows": true
     },
     {
@@ -25,6 +34,7 @@
       "rotation": [0.0, 0.0, 0.0],
       "scale": [3.0, 3.0, 3.0],
       "textures": "assets/ROAD/ROAD/ROAD.JPG",
+      "normals": "assets/ROAD/ROAD/ROAD_NORM.JPG",
       "shadows": true
     },
     {
@@ -35,6 +45,20 @@
       "scale": [5000.0, 5000.0, 5000.0],
       "textures": "assets/skybox/textures/skybox.jpeg",
       "shadows": false
+    },
+    {
+      "folder": "assets/car/",
+      "mesh": "assets/car/lada_obj.obj",
+      "position": [0.0, -84.0, -200.0],
+      "rotation": [0.0, 0.0, 0.0],
+      "scale": [3.0, 3.0, 3.0],
+      "textures": "assets/car/lada_textures/lada_carsurface_BaseColor.png",
+      "normals": "assets/car/lada_textures/lada_carsurface_Normal.png",
+      "roughness": "assets/car/lada_textures/lada_carsurface_Roughness.png",
+      "metalness": "assets/car/lada_textures/lada_carsurface_Metalness.png",
+            "shadows": true
+
+
     }
     
   ]
