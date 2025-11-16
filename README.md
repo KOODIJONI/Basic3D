@@ -165,3 +165,9 @@ Projektin myötä opin koko pipeline:n 3D-grafiikassa:
 - Tekstuurien hallinnan ja scene-konfiguraation merkityksen  
 
 Tämä oli oppimisprojekti, mutta lopputulos on toimiva 3D-moottori, joka osaa ladata malleja, renderöidä ne oikein, valaista ja teksturoida realistisesti. Kaikki tehtiin alusta asti itse, mikä auttoi ymmärtämään 3D-grafiikan perusteet käytännössä.
+
+
+
+
+https://github.com/user-attachments/assets/2888b319-7a1b-4f50-87e8-def301fa494c
+
